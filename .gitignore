@@ -29,8 +29,8 @@ dist-ssr
 *.sw?
 
 # Environment variables
-.env
 .env.*
+#Ignore all .env files except for .env.example
 !.env.example
 
 
