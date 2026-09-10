@@ -32,6 +32,7 @@ dist-ssr
 .env.*
 #Ignore all .env files except for .env.example
 !.env.example
+*.egg-info/
 
 
 #Python

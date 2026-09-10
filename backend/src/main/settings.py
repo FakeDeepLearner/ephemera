@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-6b#o!%x(((=#_t38rc8o&0yciarr)c^#cw15ln%=)^gp^gxe%&'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -68,7 +68,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.main.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases

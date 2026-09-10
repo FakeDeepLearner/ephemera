@@ -1,8 +1,12 @@
 .env.*
 
 frontend/
+backend/src/backend.egg-info
 backend/**/__pycache__/
 backend/**/*.pyc
+backend/**/*.pyo
+backend/**/*.pyd
+backend/tests/**
 
 .venv/
 .idea/
