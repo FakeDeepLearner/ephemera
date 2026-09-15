@@ -19,5 +19,6 @@ DATABASES = {
         'HOST': tmpPostgres.hostname,
         'PORT': 5432,
         'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+        'ATOMIC_REQUESTS': True,
     }
 }
