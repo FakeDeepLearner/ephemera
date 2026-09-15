@@ -6,7 +6,7 @@ from django.db import models
 
 class User(models.Model):
     user_id = models.UUIDField(default = uuid.uuid4, editable = False, primary_key = True)
-    clerk_id = models.TextField(blank = False, null = False)
+    clerk_id = models.TextField(blank = False, null = True, unique = True)
     created_at = models.DateTimeField(auto_now_add = True)
 
 

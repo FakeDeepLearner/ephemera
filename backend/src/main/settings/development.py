@@ -1,10 +1,6 @@
-from django.db.transaction import atomic
-
 from .base import *
-from dotenv import load_dotenv
 DEBUG = True
 
-load_dotenv()
 default_config = dj_database_url.config(default=os.environ["DATABASE_URL"],
                                         conn_max_age = 600,
                                         conn_health_checks= True)

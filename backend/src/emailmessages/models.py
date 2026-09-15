@@ -15,6 +15,9 @@ class EmailMessage(models.Model):
     password_encrypted_value = models.CharField(blank= True, null = True)
     # Set the value to the current timestamp when the object is first created.
     created_at = models.DateTimeField(auto_now_add = True)
+
+    #Will only be null at the moment the email message is created. Once the password is given out (for the first and only time), 
+    # this field will be set to the current timestamp.
     password_given_out_at = models.DateTimeField(default = None, null = True, auto_now = False)
     destination_email = models.EmailField(blank = False, null = False)
 
