@@ -1,14 +1,13 @@
 from .base import *  # noqa: F403, F401
 
-# Add these at the top of your settings.py
 import os
 from dotenv import load_dotenv
-from urllib.parse import urlparse, parse_qsl
+from urllib.parse import urlparse, parse_qsl, ParseResult
 
 load_dotenv()
 
 # Replace the DATABASES section of your settings.py with this
-tmpPostgres = urlparse(os.environ['DATABASE_URL'])
+tmpPostgres: ParseResult = urlparse(os.environ['DATABASE_URL'])
 
 DATABASES = {
     'default': {
@@ -17,7 +16,7 @@ DATABASES = {
         'USER': tmpPostgres.username,
         'PASSWORD': tmpPostgres.password,
         'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
+        'PORT': tmpPostgres.port or 5432,
         'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
         'ATOMIC_REQUESTS': True,
     }
