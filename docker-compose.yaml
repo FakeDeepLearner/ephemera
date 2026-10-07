@@ -1,5 +1,6 @@
 services:
   postgres:
+    restart: unless-stopped
     image: postgres:latest
     container_name: ephemera-postgres
     environment:
@@ -12,19 +13,39 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ephemera-mailpit
+    restart: unless-stopped
+    volumes:
+      - mailpit-data:/data
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: ephemera-backend
+    restart: unless-stopped
     env_file:
       - .env.local
     depends_on:
         postgres:
           condition: service_healthy
+        mailpit:
+           condition: service_started
     ports:
       - "8000:8000"
 
@@ -36,3 +57,8 @@ services:
     volumes:
       - redis_data:/data
 
+
+volumes:
+    postgres_data:
+    mailpit-data:
+    redis_data:

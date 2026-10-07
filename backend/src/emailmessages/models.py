@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import uuid
 
-from pygments.lexer import inherit
-
 from users.models import User
 from django.db import models
 
@@ -22,6 +20,7 @@ class EmailMessage(models.Model):
                                         null=True,
                                         related_name='emails')
     revoked = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(null = False, blank = False)
 
     class Meta:
         db_table = 'email_messages'
@@ -30,9 +29,7 @@ class EmailMessage(models.Model):
 
 class EmailMessageRecipient(models.Model):
     recipient_id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
-    destination_email = models.EmailField(blank=False, null=False)
-    max_views = models.IntegerField(default = 3)
-
+    destination_email = models.EmailField(blank= False, null=False)
     # The hash is null when the recipient is first created. The password will be created
     # when the secret is viewed for the first time.
     password_hash = models.CharField(null=True, default=None)

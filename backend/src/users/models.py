@@ -1,15 +1,16 @@
 import uuid
+from typing import Literal
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 
 # Create your models here.
 
-class User(models.Model):
+class User(AbstractBaseUser):
     user_id = models.UUIDField(default = uuid.uuid4, editable = False, primary_key = True)
     clerk_id = models.TextField(blank = False, null = True, unique = True)
     created_at = models.DateTimeField(auto_now_add = True)
-
-
     class Meta:
         db_table = 'users'
         indexes = [models.Index(fields = ['clerk_id'])]
+

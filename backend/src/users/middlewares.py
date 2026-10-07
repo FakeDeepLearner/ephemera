@@ -42,7 +42,6 @@ class ClerkAuthenticationMiddleware:
     def verify_token(self, token: str) -> dict[str, Any] | None:
         """Verify the JWT token and return the decoded payload if valid."""
         try:
-            # Replace 'your-public-key' with your actual public key or use a JWKS endpoint
             jwks_url = os.environ["CLERK_JWKS_URL"]
             jwks_client = PyJWKClient(jwks_url)
             signing_key = jwks_client.get_signing_key_from_jwt(token)
