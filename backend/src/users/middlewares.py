@@ -1,12 +1,51 @@
+from __future__ import annotations
+
 import os
 from collections.abc import Callable
 from typing import Any
 
-from django.http import HttpRequest, HttpResponse
 import jwt
+from django.http import HttpRequest, HttpResponse
+from django.urls import Resolver404, resolve
 from jwt import PyJWKClient
+from jwt.exceptions import InvalidTokenError, PyJWKClientError
 
 from .models import User
+
+
+def get_request_auth_token(request: HttpRequest) -> str | None:
+    authorization = request.headers.get('Authorization')
+    if not authorization:
+        return None
+
+    scheme, _, token = authorization.partition(' ')
+    if scheme.lower() != 'bearer' or not token:
+        return None
+    return token.strip() or None
+
+
+def is_authentication_exempt(request: HttpRequest) -> bool:
+    try:
+        resolved = resolve(request.path_info)
+    except Resolver404:
+        return False
+    return bool(getattr(resolved.func, 'clerk_auth_exempt', False))
+
+
+def verify_token(token: str) -> dict[str, Any] | None:
+    try:
+        jwks_url = os.environ['CLERK_JWKS_URL']
+        jwks_client = PyJWKClient(jwks_url)
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        claims = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=['RS256'],
+        )
+    except (KeyError, InvalidTokenError, PyJWKClientError):
+        return None
+
+    return claims
 
 
 class ClerkAuthenticationMiddleware:
@@ -14,39 +53,25 @@ class ClerkAuthenticationMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        # Perform authentication logic here
-        # For example, you can check for a token in the request headers
-        token = self.get_request_auth_token(request)
-        if not token:
-            return HttpResponse("Unauthorized", status=401)
-        # In a real-world scenario, you would validate the token here
-        # For example, you could check if the token is in a list of valid tokens
-        if not (claims := self.verify_token(token)):
-            return HttpResponse("Unauthorized", status=401)
+        if is_authentication_exempt(request):
+            return self.get_response(request)
 
-        claim_subject = claims["sub"]
+        token = get_request_auth_token(request)
+        if token is None:
+            return HttpResponse('Unauthorized', status = 401)
 
-        found_user = User.objects.get(clerk_id=claim_subject)
-        if not found_user:
-            return HttpResponse("Unauthorized", status=401)
+        claims = verify_token(token)
+        if claims is None:
+            return HttpResponse('Unauthorized', status = 401)
 
-        request.user = found_user  # Attach the user to the request for later use
-        # If the token is valid, proceed to the next middleware or view
-        response = self.get_response(request)
-        return response
+        claim_subject = claims.get('sub')
+        if not isinstance(claim_subject, str) or not claim_subject:
+            return HttpResponse('Unauthorized', status = 401)
 
-    def get_request_auth_token(self, request: HttpRequest) -> str | None:
-        """Extract the authentication token from the request headers."""
-        return request.headers.get("Authorization")
-
-    def verify_token(self, token: str) -> dict[str, Any] | None:
-        """Verify the JWT token and return the decoded payload if valid."""
         try:
-            jwks_url = os.environ["CLERK_JWKS_URL"]
-            jwks_client = PyJWKClient(jwks_url)
-            signing_key = jwks_client.get_signing_key_from_jwt(token)
-            decoded_token_claims = jwt.decode(token, signing_key.key, algorithms=["RS256"])
-            return decoded_token_claims
-        except Exception as e:
-            print(f"Token verification failed: {e}")
-            return None
+            found_user = User.objects.get(clerk_id=claim_subject)
+        except User.DoesNotExist:
+            return HttpResponse('Unauthorized', status = 401)
+
+        request.user = found_user
+        return self.get_response(request)

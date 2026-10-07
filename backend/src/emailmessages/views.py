@@ -5,7 +5,6 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import QuerySet
-from django.http.response import Http404
 from django.contrib.auth.hashers import check_password
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -16,6 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from users.models import User
+from users.decorators import clerk_auth_exempt
 
 from .models import EmailMessage, EmailMessageRecipient
 from .serializers import EmailMessageCreateSerializer, EmailMessageSerializer, PasswordInputSerializer
@@ -78,6 +78,7 @@ def email_message_create(request: Request) -> Response:
     return Response(output_serializer.data, status = 201)
 
 
+@clerk_auth_exempt
 @api_view(['POST'])
 def email_message_view(
     request: Request,
@@ -140,7 +141,7 @@ def email_recipient_revoke(request: Request, recipient_id: uuid.UUID) -> Respons
         )
         recipient.revoked = True
         recipient.save()
-    except Http404:
+    except EmailMessageRecipient.DoesNotExist:
         return Response({"message": "This message recipient either does not exist or "
                                   "belongs to a message that has not been created by you"}, status=404)
 

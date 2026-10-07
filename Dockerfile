@@ -25,4 +25,4 @@ COPY backend/ .
 # Expose port 8000 so that localhost can reach the backend.
 EXPOSE 8000
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "src/manage.py", "runserver", "0.0.0.0:8000"]
