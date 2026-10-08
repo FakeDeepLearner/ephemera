@@ -8,3 +8,4 @@ pydantic_core==2.46.5
 pytest-django==4.14.0
 pytest-dotenv==0.5.2
 types-PyYAML==6.0.12.20260906
+djangorestframework-dataclasses==1.4.0

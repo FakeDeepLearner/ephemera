@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import secrets
 import uuid
+from datetime import timedelta
 
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.mail import send_mail
@@ -14,7 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from users.models import User
-from .models import EmailMessageRecipient, EmailMessage
+from .models import EmailMessageRecipient, EmailMessage, MessageView
 
 
 def send_recipient_id_email(email: str, recipient_id: uuid.UUID) -> None:
@@ -68,14 +69,11 @@ def get_message_recipient(recipient_id: uuid.UUID, user: User) -> EmailMessageRe
                   associated_message__associated_user=user)
         )
     except EmailMessageRecipient.DoesNotExist:
-        #Re-raise this exception.
         raise
 
-    # Check if the recipient or the associated message is revoked
     if recipient.revoked or recipient.associated_message.revoked:
         raise PermissionError
 
-    #Check if the message has expired
     if recipient.associated_message.expires_at <= timezone.now():
         raise PermissionError
 
@@ -85,20 +83,39 @@ def get_message_recipient(recipient_id: uuid.UUID, user: User) -> EmailMessageRe
 
 def render_message_content(request: Request, recipient: EmailMessageRecipient) -> HttpResponse:
     message: EmailMessage = recipient.associated_message
-    return render(request,
-                  'emailmessages/message.html',
-                  {'title': message.title, 'content': message.content},
-                  status = 200)
+
+    #Log a message review for this recipient.
+    MessageView.objects.create(recipient=recipient)
+
+    response = render(request,
+                      'emailmessages/message.html',
+                      {'title': message.title, 'content': message.content},
+                      status = 200)
+    #Very important to ensure that this information does not get cached.
+    response['Cache-Control'] = 'max-age=0, no-cache, no-store, must-revalidate, private'
+    return response
 
 
 def render_message_with_password(request: Request, recipient: EmailMessageRecipient,
                                  password: str) -> HttpResponse | Response:
 
-    if (not recipient.password_hash
-            or not check_password(password, recipient.password_hash)):
+    if not recipient.password_hash or not check_password(password, recipient.password_hash):
         return Response(
-            {'message': 'The password is incorrect or this message has not received its password yet.'},
+            {'message': 'The password is incorrect or this '
+                        'message has not received its password yet.'},
             status=400,
         )
 
     return render_message_content(request, recipient)
+
+time_ranges = {
+        'Last Hour': timedelta(hours=1),
+        'Last 12 Hours': timedelta(hours=12),
+        'Last 24 Hours': timedelta(hours=24),
+}
+
+
+def get_view_count_for_recipient(recipient: EmailMessageRecipient, timespan: str) -> int:
+    cutoff_time = timezone.now() - time_ranges[timespan]
+    return MessageView.objects.filter(recipient=recipient,
+                                      viewed_at__gte=cutoff_time).count()

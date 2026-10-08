@@ -11,4 +11,6 @@ urlpatterns = [
     path('recipients/<uuid:recipient_id>/view/', email_message_view_with_password, name='email-message-view'),
     path('recipients/<uuid:recipient_id>/revoke/', email_recipient_revoke, name='email-recipient-revoke'),
     path('messages/<uuid:message_id>/revoke/', email_message_revoke, name='email-message-revoke'),
+    path('recipients/<uuid:recipient_id>/statistics/', email_recipient_usage_statistics,
+         name='email-recipient-usage-statistics'),
 ]

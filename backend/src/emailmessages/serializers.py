@@ -1,4 +1,9 @@
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+
 from rest_framework import serializers
+from rest_framework_dataclasses.serializers import DataclassSerializer
 
 from .models import EmailMessage, EmailMessageRecipient
 
@@ -36,3 +41,22 @@ class EmailMessageCreateSerializer(serializers.Serializer):
 
 class PasswordInputSerializer(serializers.Serializer):
     password = serializers.CharField(allow_null = False, allow_blank = False)
+
+class RecipientUsageStatisticsInputSerializer(serializers.Serializer):
+    timespan = serializers.ChoiceField(
+        choices=('Last Hour', 'Last 12 Hours', 'Last 24 Hours'),
+        allow_null=False,
+    )
+
+@dataclass(frozen=True)
+class MessageUsageResponse:
+    message_id: uuid.UUID
+    title: str
+    usage_count: int
+    created_at: datetime
+    revoked: bool
+
+
+class MessageUsageResponseSerializer(DataclassSerializer):
+    class Meta:
+        dataclass = MessageUsageResponse

@@ -17,9 +17,15 @@ from django.utils import timezone
 from users.models import User
 
 from .models import EmailMessage, EmailMessageRecipient
-from .serializers import EmailMessageCreateSerializer, EmailMessageSerializer, PasswordInputSerializer
+from .serializers import (
+    EmailMessageCreateSerializer,
+    EmailMessageSerializer,
+    RecipientUsageStatisticsInputSerializer,
+    PasswordInputSerializer,
+    MessageUsageResponse, MessageUsageResponseSerializer
+)
 from .helpers import send_recipient_id_email, get_message_recipient, render_message_content, \
-    render_message_with_password
+    render_message_with_password, get_view_count_for_recipient
 
 
 class EmailMessagePagination(PageNumberPagination):
@@ -178,3 +184,40 @@ def email_message_revoke(request: Request, message_id: uuid.UUID) -> Response:
                                   "was not created by you"}, status = 404)
 
     return Response({"message": "Message revoked successfully."}, status = 200)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def email_recipient_usage_statistics(request: Request, recipient_id: uuid.UUID) -> Response:
+    input_serializer = RecipientUsageStatisticsInputSerializer(data=request.query_params)
+    input_serializer.is_valid(raise_exception = True)
+
+    timespan = input_serializer.validated_data['timespan']
+
+
+    user = cast(User, request.user)
+    try:
+        recipient: EmailMessageRecipient = (EmailMessageRecipient.objects.
+        prefetch_related('associated_message').
+        get(
+            recipient_id=recipient_id,
+            associated_message__associated_user=user,
+        ))
+
+        usage_count = get_view_count_for_recipient(recipient, timespan)
+        response_model = MessageUsageResponse(
+            message_id=recipient.recipient_id,
+            title=recipient.associated_message.title,
+            usage_count=usage_count,
+            created_at=recipient.associated_message.created_at,
+            revoked=recipient.revoked
+        )
+
+        output_serializer = MessageUsageResponseSerializer(response_model)
+
+        return Response(output_serializer.data, status = 200)
+    except EmailMessageRecipient.DoesNotExist:
+        return Response(
+            {'message': 'This message recipient either does not exist or does not belong to you.'},
+            status=404,
+        )

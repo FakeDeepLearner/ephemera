@@ -47,3 +47,16 @@ class EmailMessageRecipient(models.Model):
 
     class Meta:
         db_table = 'email_message_recipients'
+
+
+
+class MessageView(models.Model):
+    view_id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
+    recipient = models.ForeignKey(EmailMessageRecipient, on_delete=models.CASCADE,
+                                  null=True,
+                                  related_name='views')
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'message_views'
+        indexes = [models.Index(fields=['recipient', 'viewed_at'])]
