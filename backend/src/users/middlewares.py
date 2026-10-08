@@ -53,6 +53,7 @@ class ClerkAuthenticationMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        #If the request is exempt from authentication, don't process this middleware at all.
         if is_authentication_exempt(request):
             return self.get_response(request)
 

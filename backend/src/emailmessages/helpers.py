@@ -4,12 +4,17 @@ import os
 import secrets
 import uuid
 
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
 from django.core.mail import send_mail
 from django.db import transaction
+from django.http import HttpResponse
+from django.shortcuts import render
 from django.utils import timezone
+from rest_framework.request import Request
+from rest_framework.response import Response
 
-from .models import EmailMessageRecipient
+from users.models import User
+from .models import EmailMessageRecipient, EmailMessage
 
 
 def send_recipient_id_email(email: str, recipient_id: uuid.UUID) -> None:
@@ -52,3 +57,48 @@ def issue_recipient_password(email: str, recipient_id: uuid.UUID) -> str:
         fail_silently=False,
     )
     return password
+
+
+def get_message_recipient(recipient_id: uuid.UUID, user: User) -> EmailMessageRecipient:
+    try:
+        recipient: EmailMessageRecipient = (
+            EmailMessageRecipient.objects.select_related(
+                'associated_message',
+            ).get(recipient_id=recipient_id,
+                  associated_message__associated_user=user)
+        )
+    except EmailMessageRecipient.DoesNotExist:
+        #Re-raise this exception.
+        raise
+
+    # Check if the recipient or the associated message is revoked
+    if recipient.revoked or recipient.associated_message.revoked:
+        raise PermissionError
+
+    #Check if the message has expired
+    if recipient.associated_message.expires_at <= timezone.now():
+        raise PermissionError
+
+    return recipient
+
+
+
+def render_message_content(request: Request, recipient: EmailMessageRecipient) -> HttpResponse:
+    message: EmailMessage = recipient.associated_message
+    return render(request,
+                  'emailmessages/message.html',
+                  {'title': message.title, 'content': message.content},
+                  status = 200)
+
+
+def render_message_with_password(request: Request, recipient: EmailMessageRecipient,
+                                 password: str) -> HttpResponse | Response:
+
+    if (not recipient.password_hash
+            or not check_password(password, recipient.password_hash)):
+        return Response(
+            {'message': 'The password is incorrect or this message has not received its password yet.'},
+            status=400,
+        )
+
+    return render_message_content(request, recipient)

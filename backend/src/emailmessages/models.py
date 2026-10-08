@@ -37,6 +37,7 @@ class EmailMessageRecipient(models.Model):
     # After that, the password will not be viewable/obtainable again by anyone
     password_created_at = models.DateTimeField(null=True, default=None)
 
+    is_password_protected = models.BooleanField()
     #Whenever an email message is deleted, all recipient records are also deleted.
     associated_message = models.ForeignKey(EmailMessage, on_delete=models.CASCADE,
                                            null=True,
