@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
+
 from users.models import User
 from django.db import models
 
@@ -16,7 +18,7 @@ class EmailMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add = True)
     # Whenever a user is deleted, their email message should still
     # be available for its intended recipient to view.
-    associated_user = models.ForeignKey(User, on_delete=models.SET_NULL,
+    associated_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                         null=True,
                                         related_name='emails')
     revoked = models.BooleanField(default=False)

@@ -13,11 +13,12 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+load_dotenv()
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
@@ -25,9 +26,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = bool(os.environ['DJANGO_DEBUG'])
 
 ALLOWED_HOSTS = []
+
+AUTH_USER_MODEL = 'users.User'
 
 
 # Application definition
@@ -51,8 +54,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'users.middlewares.ClerkAuthenticationMiddleware',
-    'django.contrib.emailmessages.middleware.MessageMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -79,12 +81,16 @@ WSGI_APPLICATION = 'backend.src.main.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+default_config = dj_database_url.config(
+    default=os.environ["DATABASE_URL"],
+    conn_max_age=600,
+    conn_health_checks=True)
+default_config["ATOMIC_REQUESTS"] = True
+default_config["PORT"] = 5432 #Just in case
+# Makes every request atomic, so if an exception occurs, the transaction will be rolled back.
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default = os.environ['DATABASE_URL'],
-        conn_max_age = 600,
-        conn_health_checks = True
-    )
+    'default': default_config
 }
 
 
