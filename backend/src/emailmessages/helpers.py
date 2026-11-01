@@ -11,10 +11,13 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
+from rest_framework import status
+from rest_framework.exceptions import APIException
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from users.models import User
+from utils import ApiError
 from .models import EmailMessageRecipient, EmailMessage, MessageView
 
 
@@ -27,7 +30,7 @@ def send_recipient_id_email(email: str, recipient_id: uuid.UUID) -> None:
         ),
         from_email=os.environ['EMAIL_HOST_USER'],
         recipient_list=[email],
-        fail_silently=False,
+        fail_silently=False
     )
 
 
@@ -38,9 +41,9 @@ def issue_recipient_password(email: str, recipient_id: uuid.UUID) -> str:
 
     #We can't issue password for recipients that already have a password or have been revoked.
     if recipient.password_hash is not None:
-        raise ValueError("Password has already been issued for this recipient.")
+        raise ValueError("Password has already been issued for this message.")
     if recipient.revoked:
-        raise ValueError("Password cannot be issued for a revoked recipient.")
+        raise ValueError("Password cannot be issued for a revoked message.")
 
     password = secrets.token_urlsafe(24)
     recipient.password_hash = make_password(password)
@@ -50,15 +53,15 @@ def issue_recipient_password(email: str, recipient_id: uuid.UUID) -> str:
     send_mail(
         subject='Your email message password has been created',
         message=(
-            'The password for your email message recipient record has been '
+            'The password for your this message has been '
             f'created.\n\nPassword: {password}'
+            f'\n\nYou can view the message at: '
         ),
         from_email=os.environ['EMAIL_HOST_USER'],
         recipient_list=[email],
         fail_silently=False,
     )
     return password
-
 
 def get_message_recipient(recipient_id: uuid.UUID, user: User) -> EmailMessageRecipient:
     try:
@@ -69,13 +72,22 @@ def get_message_recipient(recipient_id: uuid.UUID, user: User) -> EmailMessageRe
                   associated_message__associated_user=user)
         )
     except EmailMessageRecipient.DoesNotExist:
-        raise
+        raise ApiError(
+            message = 'This message recipient either does not exist or does not belong to you.',
+            status_code = status.HTTP_404_NOT_FOUND
+        )
 
     if recipient.revoked or recipient.associated_message.revoked:
-        raise PermissionError
+        raise ApiError(
+            message = 'This message has been revoked and is not currently available.',
+            status_code = status.HTTP_403_FORBIDDEN
+        )
 
     if recipient.associated_message.expires_at <= timezone.now():
-        raise PermissionError
+        raise ApiError(
+            message = 'This message has expired and is no longer available.',
+            status_code = status.HTTP_403_FORBIDDEN
+        )
 
     return recipient
 
@@ -93,6 +105,7 @@ def render_message_content(request: Request, recipient: EmailMessageRecipient) -
                       status = 200)
     #Very important to ensure that this information does not get cached.
     response['Cache-Control'] = 'max-age=0, no-cache, no-store, must-revalidate, private'
+    response['Referrer-Policy'] = 'no-referrer'
     return response
 
 
@@ -100,10 +113,9 @@ def render_message_with_password(request: Request, recipient: EmailMessageRecipi
                                  password: str) -> HttpResponse | Response:
 
     if not recipient.password_hash or not check_password(password, recipient.password_hash):
-        return Response(
-            {'message': 'The password is incorrect or this '
-                        'message has not received its password yet.'},
-            status=400,
+        raise ApiError(
+            message = 'The password is incorrect or this message has not received its password yet.',
+            status_code = status.HTTP_400_BAD_REQUEST
         )
 
     return render_message_content(request, recipient)
