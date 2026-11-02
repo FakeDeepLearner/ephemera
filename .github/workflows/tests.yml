@@ -1,0 +1,73 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop, staging]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres/postgres:latest
+        env:
+            POSTGRES_DB: ephemera
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 15s
+          --health-timeout 5s
+          --health-retries 3
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install libpq
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpq-dev
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+
+      - name: Write environment variables
+        run: |
+          cat > .env.local <<'ENV'
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/ephemera
+          DJANGO_SECRET_KEY=ci-only-key-not-used-anywhere-else
+          DJANGO_DEBUG=false
+          DJANGO_SETTINGS_MODULE=main.settings
+          DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+          ENV
+
+      - name: Django system checks
+        run: python src/manage.py check --fail-level WARNING
+
+      - name: Fail if a model change has no migration
+        run: python src/manage.py makemigrations --check --dry-run
+
+      - name: Apply migrations
+        run: python src/manage.py migrate
+
+      - name: Tests
+        run: python -m pytest

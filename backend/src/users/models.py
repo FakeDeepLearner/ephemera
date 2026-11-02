@@ -11,7 +11,6 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique = True, blank = False, null = False)
     created_at = models.DateTimeField(auto_now_add = True)
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['email']
     class Meta:
         db_table = 'users'
 

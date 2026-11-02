@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /ephemera
 
 # Copy the requirements into the /ephemera directory inside the container
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -20,7 +20,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 
 # Copy all of the current directory into the /ephemera directory inside the container
-COPY . .
+COPY backend/ .
+
+
+COPY templates/ /templates/
 
 # Install the project as a package inside the container, so that the test code can properly run.
 RUN pip install --no-cache-dir -e .
