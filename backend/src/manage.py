@@ -4,6 +4,7 @@ Django's command-line utility for administrative tasks."""
 import os
 import sys
 
+from django.contrib.auth.models import AbstractUser
 
 def main():
     """Run administrative tasks."""
