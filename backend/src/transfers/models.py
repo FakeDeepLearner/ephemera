@@ -1,14 +1,13 @@
 from django.db import models
 import uuid
 from users.models import User
-import boto3
 # Create your models here.
 
 class FileTransfer(models.Model):
     transfer_id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     # Set the value to the current timestamp when the object is first created.
     created_at = models.DateTimeField(auto_now_add=True)
-    # Whenever a user is deleted, their email message should still
+    # Whenever a user is deleted, their file transfers should still
     # be available for its intended recipient to view.
     associated_user = models.ForeignKey(User, on_delete=models.SET_NULL,
                                         null=True,
@@ -37,7 +36,11 @@ class FileTransferRecipient(models.Model):
     file_id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
     destination_email = models.EmailField(blank=False, null=False)
 
-    # These fields are used to store the password hash and the timestamp when the password was created. The password hash is null when the recipient is first created. The password will be created when the secret is viewed for the first time. When the message is first reviewed by the recipient, the password_created_at will be set to the current timestamp.
+    # These fields are used to store the password hash and the timestamp when the password was created.
+    # The password hash is null when the recipient is first created.
+    # The password will be created when the secret is viewed for the first time.
+    # When the message is first reviewed by the recipient,
+    # the password_created_at will be set to the current timestamp.
     # After that, the password will not be viewable/obtainable again by anyone.
     password_hash = models.CharField(null=True, default=None)
     password_created_at = models.DateTimeField(null=True, default=None)
