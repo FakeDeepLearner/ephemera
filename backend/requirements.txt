@@ -11,3 +11,4 @@ types-PyYAML
 djangorestframework-dataclasses
 psycopg[binary]
 django-allauth[account,socialaccount,mfa,headless]
+boto3
